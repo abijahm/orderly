@@ -1,118 +1,113 @@
-interface OrderPlugin {
-  _dependecies: OrderPlugin[]
-  run(order: Order): Promise<void>
-}
-
-class HandlePayment implements OrderPlugin {
-  _dependecies: OrderPlugin[]
-  constructor() {
-    this._dependecies = []
-  }
-
-  async run(order: Order): Promise<void> {
-    order.status = 'awaiting payment'
-    console.log('handling payments')
-  }
-
-  set dependecies(plugin: OrderPlugin){
-    this._dependecies.push(plugin)
-  }
-
-  get dependecies(): OrderPlugin[]{
-    return this._dependecies
-  }
-}
-
-class AllocateResources implements OrderPlugin {
-  _dependecies: OrderPlugin[]
-  constructor() {
-    this._dependecies = []
-  }
-
-  async run(order: Order): Promise<void> {
-    order.status = 'allocating'
-    console.log('Allocating resources')
-  }
-
-  set dependecies(plugin: OrderPlugin){
-    this._dependecies.push(plugin)
-  }
-
-  get dependecies(): OrderPlugin[]{
-    return this._dependecies
-  }
-}
-
-class VerifyAccount implements OrderPlugin {
-  _dependecies: OrderPlugin[]
-  constructor() {
-    this._dependecies = []
-  }
-
-  async run(order: Order): Promise<void> {
-    order.status = 'Verifying'
-    console.log('Verifying accounts')
-  }
-
-  set dependecies(plugin: OrderPlugin){
-    this._dependecies.push(plugin)
-  }
-
-  get dependecies(): OrderPlugin[]{
-    return this._dependecies
-  }
-}
+import EventEmitter from 'events';
 
 class Order {
-  status: string;
-  sequencedPlugins: OrderPlugin[];
-  plugins: OrderPlugin[];
+  lineItems: OrderLineItem[];
   constructor() {
-    this.sequencedPlugins = []
-    this.status = "created"
-    this.plugins = []
+    this.lineItems = []
   }
 
-  sequence(){
-    const visited = new Set();
-    let sorted:OrderPlugin[] = [];
-    function visit(plugin: OrderPlugin){
-      if(!visited.has(plugin)){
-        visited.add(plugin);
-        const deps = plugin._dependecies || [];
-        deps.forEach((dep) => visit(dep));
-        sorted.push(plugin)
-      }
-    }
-    this.plugins.forEach((plugin) => visit(plugin));
-    this.sequencedPlugins = sorted;
+  addLineItem(item: OrderLineItem) {
+    this.lineItems.push(item)
   }
 
-  async process() {
-    this.sequence()
-    for (let plugin in this.sequencedPlugins) {
-      await this.sequencedPlugins[plugin].run(this);
-    }
-  }
+}
 
-  addPlugin(plugin: OrderPlugin){
-    this.plugins.push(plugin);
-  }
+class OrderLineItem {
+  name: string;
+  quantity: number;
+  operation: string;
+  properties: { [propertyName: string]: string | number }
 
-  get pluginss(): OrderPlugin[]{
-    return this.plugins
+  constructor(name: string, quantity: number, operation: string) {
+    this.name = name;
+    this.quantity = quantity;
+    this.operation = operation;
+    this.properties = {};
   }
 }
 
-let ord = new Order();
-let pay = new HandlePayment();
-let alloc = new AllocateResources();
-let ver = new VerifyAccount();
-alloc.dependecies = pay;
-alloc.dependecies = ver;
-pay.dependecies = ver;
+// facilitate completion of the order
+abstract class FullFillmentRequest extends EventEmitter {
+  awaitedDependecies: Set<string> = new Set();
+  dependecies: Set<string> = new Set();
+  completedDependecies: Set<string> = new Set();
+  //conditions on which the fr will be loaded 
+  condition(items: OrderLineItem[]): boolean{
+    return items != undefined;
+  }
+  //other frs that should be executed before this, if conditions are not met proceed anyway
+  addDependecy(dependecy: FullFillmentRequest): void{
+    this.dependecies.add(dependecy.constructor.name);
+  }
+  //return fr names to lookup on the OrderManger plugin lookup table
+  getDependecies(): string[]{
+    return new Array(...this.dependecies);
+  }
+  //add awaitedDependecy
+  addAwaitedDependecy(fr: string): void{
+    this.awaitedDependecies.add(fr);
+  }
+  // add completed dependency
+  addCompletedDependecy(fr: string): void{
+    this.completedDependecies.add(fr);
+    this.checkDependecies();
+  }
 
-ord.addPlugin(pay)
-ord.addPlugin(alloc)
-ord.addPlugin(ver)
-ord.process()
+  private checkDependecies(): void {
+    if(this.awaitedDependecies.size === this.completedDependecies.size){
+      this.process()
+    }
+  }
+
+  process(): void {
+    this.emit('complete')
+  }
+}
+
+// manage execution of the orders by executing the fullfillment requests
+class OrderManager {
+  // plugin fr lookup table
+  plugins: { [frName: string] : FullFillmentRequest };
+  orders: Order[];
+
+  constructor() {
+    this.plugins = {};
+    this.orders = [];
+  }
+
+  registerPlugin(plugin: FullFillmentRequest) {
+    this.plugins[plugin.constructor.name] = plugin;
+  }
+
+  //process Order
+  processOrder(order: Order) {
+    //loop through the plugins to identify ones whose conditions are met
+    const orderFrs = Object.keys(this.plugins).filter((frname) => this.plugins[frname].condition(order.lineItems));
+    //sequence orders so that dependecies are executed first
+    for(let fr in orderFrs){
+      let request = this.plugins[fr];
+      request.getDependecies().forEach(dep => {
+        //if dependecy conditions were met
+        if(orderFrs.includes(dep)){
+          //add the dependecy to be awaited
+          request.addAwaitedDependecy(dep)
+          //add listener to notify children that it has completed
+          this.plugins[dep].on('complete', () => {
+            request.addCompletedDependecy(dep);
+          })
+        }
+      })
+    }
+
+    //process frs without dependecies
+    orderFrs.forEach((fr) => {
+      let request = this.plugins[fr]
+      let foundDeps = request.getDependecies().filter(dep => orderFrs.includes(dep));
+      if(foundDeps.length === 0){
+        request.process()
+      }
+    })
+
+  }
+}
+
