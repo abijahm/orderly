@@ -1,39 +1,37 @@
 import EventEmitter from 'events';
-import type { OrderLineItem } from './LineItem';
+import type { Order } from './Order';
 // facilitate completion of the order
 export abstract class FullFillmentRequest extends EventEmitter {
-  awaitedDependecies: Set<string> = new Set();
-  dependecies: Set<string> = new Set();
-  completedDependecies: Set<string> = new Set();
+  awaitedDependencies: Set<string> = new Set();
+  dependencies: Set<string> = new Set();
+  completedDependencies: Set<string> = new Set();
   //conditions on which the fr will be loaded 
-  condition(items: OrderLineItem[]): boolean{
-    return items != undefined;
+  condition(order: Order): boolean {
+    return order.lineItems != undefined;
   }
   //other frs that should be executed before this, if conditions are not met proceed anyway
-  addDependecy(dependecy: FullFillmentRequest): void{
-    this.dependecies.add(dependecy.constructor.name);
+  addDependency(dependency: FullFillmentRequest): void {
+    this.dependencies.add(dependency.constructor.name);
   }
   //return fr names to lookup on the OrderManger plugin lookup table
-  getDependecies(): string[]{
-    return new Array(...this.dependecies);
+  getDependencies(): string[] {
+    return new Array(...this.dependencies);
   }
   //add awaitedDependecy
-  addAwaitedDependecy(fr: string): void{
-    this.awaitedDependecies.add(fr);
+  addAwaitedDependency(fr: string): void {
+    this.awaitedDependencies.add(fr);
   }
   // add completed dependency
-  addCompletedDependecy(fr: string): void{
-    this.completedDependecies.add(fr);
-    this.checkDependecies();
+  addCompletedDependency(fr: string): void {
+    this.completedDependencies.add(fr);
   }
 
-  private checkDependecies(): void {
-    if(this.awaitedDependecies.size === this.completedDependecies.size){
-      this.process()
-    }
+  checkAllDependenciesDone(): boolean {
+    return (this.awaitedDependencies.size === this.completedDependencies.size);
   }
 
-  process(): void {
+  //process should receive an order
+  process(order: Order): void {
     this.emit('complete')
   }
 }
