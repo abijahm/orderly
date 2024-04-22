@@ -1,14 +1,23 @@
+import type { OrderableItem } from "./orderable";
+
 export class OrderLineItem {
-  name: string;
-  quantity: number;
-  operation: string;
+  item: OrderableItem;
+  _quantity: number;
+  // properties will hold additional info
   properties: { [propertyName: string]: string | number }
 
-  constructor(name: string, quantity: number, operation: string) {
-    this.name = name;
-    this.quantity = quantity;
-    this.operation = operation;
+  constructor(item: OrderableItem, quantity: number) {
+    this.item = item;
+    this._quantity = quantity;
     this.properties = {};
+  }
+
+  get quantity(){
+    return this._quantity;
+  }
+
+  set quantity(count: number){
+    this._quantity = count;
   }
 }
 

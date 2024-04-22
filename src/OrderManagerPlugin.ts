@@ -32,6 +32,7 @@ export abstract class FullFillmentRequest extends EventEmitter {
 
   //process should receive an order
   process(order: Order): void {
+    //fullfill the orders requests
     this.emit('complete')
   }
 }
