@@ -4,6 +4,7 @@ export class Order {
   id: number;
   lineItems: OrderLineItem[];
   _status: string;
+
   constructor(id: number) {
     this.lineItems = []
     this.id = id;
