@@ -5,13 +5,18 @@ export abstract class FullFillmentRequest extends EventEmitter {
   awaitedDependencies: Set<string> = new Set();
   dependencies: Set<string> = new Set();
   completedDependencies: Set<string> = new Set();
+
+  constructor(){
+    super();
+    console.log(`Plugin ${this.constructor.name} registered`)
+  }
   //conditions on which the fr will be loaded 
   condition(order: Order): boolean {
     return order.lineItems != undefined;
   }
   //other frs that should be executed before this, if conditions are not met proceed anyway
-  addDependency(dependency: FullFillmentRequest): void {
-    this.dependencies.add(dependency.constructor.name);
+  addDependency(dependency: typeof FullFillmentRequest): void {
+    this.dependencies.add(dependency.name);
   }
   //return fr names to lookup on the OrderManger plugin lookup table
   getDependencies(): string[] {
@@ -33,7 +38,7 @@ export abstract class FullFillmentRequest extends EventEmitter {
   //process should receive an order
   process(order: Order): void {
     //fullfill the orders requests
-    this.emit('complete')
+    this.emit('complete', order)
   }
 }
 
