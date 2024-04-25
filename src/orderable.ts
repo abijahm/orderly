@@ -4,4 +4,5 @@ export interface OrderableItem {
   name: string
   // target can hold table holding the orderable item
   target: string
+  price: number
 }

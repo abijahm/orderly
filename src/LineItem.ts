@@ -19,5 +19,9 @@ export class OrderLineItem {
   set quantity(count: number){
     this._quantity = count;
   }
+
+  get price(){
+    return this.item.price * this.quantity
+  }
 }
 

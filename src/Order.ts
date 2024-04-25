@@ -23,5 +23,12 @@ export class Order {
     return this._status;
   }
 
+  get price(){
+    //get total price of lineitems
+    return this.lineItems.reduce((prev, curr) => {
+      return prev = prev + curr.price
+    },0)
+  }
+
 }
 
