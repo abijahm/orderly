@@ -10,7 +10,8 @@ describe("LineItem", () => {
     mockItem = {
       name: 'Honor',
       target: 'devices',
-      id: 234
+      id: 234,
+      price: 23
     }
 
     lineItem = new OrderLineItem(mockItem, 2)
