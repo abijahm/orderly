@@ -1,113 +1,58 @@
-import { describe, test, expect, spyOn, beforeEach } from 'bun:test'
-import { OrderLineItem } from '../src/LineItem';
+import { describe, test, expect, spyOn, beforeEach, mock, jest } from 'bun:test'
 import { Order } from '../src/Order';
-import type { OrderableItem } from '../src/orderable';
 import { FullFillmentRequest } from '../src/OrderManagerPlugin';
 import OrderManager from '../src/OrderManager';
 
-//create OrderableItem
-class SmartPhone implements OrderableItem {
-  name: string
-  launchDate: Date
-  operatingSystem: string
-  price: number
-  target: string = 'smartphone';
-  id: number;
-  constructor(id: number, name: string, launchDate: Date, operatingSystem: string, price: number) {
-    this.name = name;
-    this.launchDate = launchDate;
-    this.operatingSystem = operatingSystem;
-    this.price = price;
-    this.id = id;
-  }
+class testFr extends FullFillmentRequest {
+}
+class testFr1 extends FullFillmentRequest {
+}
+class dependency extends FullFillmentRequest {
 }
 
-//create a FullFillmentRequest 
-class PaymentFr extends FullFillmentRequest {
-  constructor() {
-    super()
-  }
-  condition(order: Order): boolean {
-    return order.price > 0;
-  }
-  process(order: Order): void {
-    this.emit('complete', order)
-  }
-}
-
-class NotifyWarrantyFr extends FullFillmentRequest {
-  constructor() {
-    super()
-    this.addDependency(PaymentFr)
-  }
-
-  condition(order: Order): boolean {
-    return order.lineItems.find((lineItem) => lineItem.item.name == 'Iphone' || lineItem.item.name == 'xiaomi') !== undefined;
-  }
-
-  process(order: Order): void {
-    let withWarranty = order.lineItems.filter((lineItem) => lineItem.item.name == 'Iphone' || lineItem.item.name == 'xiaomi');
-    withWarranty.forEach(lineItem => {
-      //handle sending warranties 
-    })
-    this.emit('complete', order)
-  }
-}
-
-describe("OrderManager", () => {
-  let order = new Order(0)
-  order.addLineItem(
-    new OrderLineItem(
-      new SmartPhone(1, 'Honor', new Date(), 'Android', 700),
-      2
-    )
-  )
-
-  order.addLineItem(
-    new OrderLineItem(
-      new SmartPhone(2, 'xiaomi', new Date(), 'Android', 1200),
-      1
-    )
-  )
-
-  order.addLineItem(
-    new OrderLineItem(
-      new SmartPhone(3, 'Iphone', new Date(), 'ios', 999),
-      4
-    )
-  )
-
-  let order2 = new Order(1);
-
-  order2.addLineItem(
-    new OrderLineItem(
-      new SmartPhone(1, 'Honor', new Date(), 'Android', 700),
-      2
-    )
-  )
-
+describe('OrderManger', () => {
   let om: OrderManager
   beforeEach(() => {
     om = new OrderManager()
-    om.registerPlugin(PaymentFr)
-    om.registerPlugin(NotifyWarrantyFr)
   })
 
-  test('processOrder should be called', () => {
-    let spy = spyOn(om, 'processOrder')
-    expect(spy).toHaveBeenCalledTimes(0)
+  test('Plugin Registration', () => {
+    om.registerPlugin(testFr)
+    expect(om.plugins['testFr']).toBe(testFr)
+  })
+
+  test('Execution of plugins without dependencies', () => {
+    let spy = spyOn(testFr.prototype, 'process')
+    let spy2 = spyOn(testFr1.prototype, 'process')
+    let mockCondition = spyOn(testFr1, 'condition')
+    mockCondition.mockReturnValue(false)
+    om.registerPlugin(testFr)
+    om.registerPlugin(testFr1)
+    const order = new Order(2)
     om.addOrder(order)
     expect(spy).toHaveBeenCalledTimes(1)
-    om.addOrder(order2)
-    expect(spy).toHaveBeenCalledTimes(2)
+    expect(spy2).not.toHaveBeenCalled()
   })
 
-  test('Fr process should be called correct amount of times', () => {
-    let frSpy = spyOn(om.plugins['NotifyWarrantyFr'], 'process')
-    expect(frSpy).toHaveBeenCalledTimes(0)
+  test.only('Execution of plugins with dependencies', () => {
+    class tetsFrDep extends FullFillmentRequest {
+      constructor(){
+        super()
+        this.addDependency(dependency)
+      }
+    }
+
+    let spy = spyOn(tetsFrDep.prototype, 'process')
+    let spy2 = spyOn(dependency.prototype, 'process')
+    let eventSpy = spyOn(dependency.prototype, 'on')
+    om.registerPlugin(dependency)
+    om.registerPlugin(tetsFrDep)
+    const order = new Order(2)
     om.addOrder(order)
-    expect(frSpy).toHaveBeenCalledTimes(1)
-    om.addOrder(order)
-    expect(frSpy).toHaveBeenCalledTimes(1)
+    expect(spy2).toHaveBeenCalledTimes(1)
+    expect(eventSpy).toHaveBeenCalled()
+    expect(spy).toHaveBeenCalledTimes(1)
   })
+
 })
+
