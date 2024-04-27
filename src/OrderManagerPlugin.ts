@@ -9,7 +9,7 @@ export class FullFillmentRequest extends EventEmitter {
   }
   //conditions on which the fr will be loaded 
   static condition(order: Order): boolean {
-    return order.lineItems != undefined;
+    return order != undefined;
   }
   //other frs that should be executed before this, if conditions are not met proceed anyway
   addDependency(dependency: typeof FullFillmentRequest): void {
