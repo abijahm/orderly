@@ -19,6 +19,8 @@ describe('OrderManger', () => {
   test('Plugin Registration', () => {
     om.registerPlugin(testFr)
     expect(om.plugins['testFr']).toBe(testFr)
+    om.registerPlugin(FullFillmentRequest)
+    expect(om.plugins['FullFillmentRequest']).toBeUndefined()
   })
 
   test('Execution of plugins without dependencies', () => {
@@ -53,6 +55,5 @@ describe('OrderManger', () => {
     expect(eventSpy).toHaveBeenCalled()
     expect(spy).toHaveBeenCalledTimes(1)
   })
-
 })
 

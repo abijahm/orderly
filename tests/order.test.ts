@@ -9,11 +9,13 @@ describe('Order', () => {
   let lineItem: OrderLineItem = new OrderLineItem({
     name: 'Honor',
     target: 'devices',
-    id: 234
+    id: 234,
+    price: 499.99
   }, 2)
 
   test('should initialize properly', () => {
     expect(order.id).toEqual(1)
+    expect(order.status).toEqual('created')
   })
 
   test('should set status', () => {
