@@ -5,11 +5,11 @@ import EventEmitter from "events";
 // manage execution of the orders by executing the fullfillment requests
 export default class OrderManager extends EventEmitter {
   //store all plugins 
-  plugins: { [frName: string]: typeof FullFillmentRequest };
+  private plugins: Map<string, typeof FullFillmentRequest>;
 
   constructor() {
     super()
-    this.plugins = {};
+    this.plugins = new Map();
     this.handleNewOrders();
   }
 
@@ -30,20 +30,24 @@ export default class OrderManager extends EventEmitter {
     if (Plugin === FullFillmentRequest) {
       return;
     }
-    this.plugins[Plugin.name] = Plugin
+    this.plugins.set(Plugin.name, Plugin)
+  }
+  
+  getPlugin(pluginName: string): typeof FullFillmentRequest | undefined {
+    return this.plugins.get(pluginName);
   }
 
   //process Order -> using events when a dependency completes it should notify others that depend on it
   processOrder(order: Order) {
     //Instantiate all frs required for this order
-    const orderFrs = Object.entries(this.plugins)
-      .filter((frname) => this.plugins[frname[0]].condition(order))
+    const orderFrs = Array.from(this.plugins.entries())
+      .filter(([_, val]) => val.condition(order))
       .map(([_, val]) => new val());
     //find all frs which have dependecies and register to be notified on complete
     orderFrs.forEach((request) => {
       let dependencies = request.getDependencies(orderFrs);
       let awaitedDependenciesCount = dependencies.length;
-      request.getDependencies(orderFrs).forEach((dep: FullFillmentRequest) => {
+      dependencies.forEach((dep: FullFillmentRequest) => {
         //register to be notified once dependency executes
         dep.on('complete', (order: Order) => {
           awaitedDependenciesCount--;

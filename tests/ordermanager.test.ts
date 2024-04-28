@@ -18,9 +18,9 @@ describe('OrderManger', () => {
 
   test('Plugin Registration', () => {
     om.registerPlugin(testFr)
-    expect(om.plugins['testFr']).toBe(testFr)
+    expect(om.getPlugin('testFr')).toBe(testFr)
     om.registerPlugin(FullFillmentRequest)
-    expect(om.plugins['FullFillmentRequest']).toBeUndefined()
+    expect(om.getPlugin('FullFillmentRequest')).toBeUndefined()
   })
 
   test('Execution of plugins without dependencies', () => {
